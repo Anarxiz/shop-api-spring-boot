@@ -1,0 +1,16 @@
+{
+  "properties": [
+    {
+      "name": "app.rate-limit.enabled",
+      "type": "java.lang.Boolean",
+      "defaultValue": true,
+      "description": "Включить ограничение частоты запросов на вход и регистрацию."
+    },
+    {
+      "name": "app.rate-limit.auth-requests-per-minute",
+      "type": "java.lang.Integer",
+      "defaultValue": 5,
+      "description": "Максимум запросов в минуту с одного IP на /api/auth/login и /api/auth/register."
+    }
+  ]
+}

@@ -1,0 +1,33 @@
+services:
+  postgres:
+    image: postgres:18
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: shop
+    ports:
+      - "5433:5432"
+    volumes:
+      - shop_pgdata:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  app:
+    build: .
+    ports:
+      - "8080:8080"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/shop
+      SPRING_DATASOURCE_USERNAME: postgres
+      SPRING_DATASOURCE_PASSWORD: postgres
+      # секрет для подписи JWT, минимум 32 символа; в реальной среде задаётся из окружения
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-local-dev-secret-key-change-me-0123456789}
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  shop_pgdata:

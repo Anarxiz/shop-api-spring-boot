@@ -1,0 +1,46 @@
+spring:
+  application:
+    name: shop
+  datasource:
+    url: jdbc:postgresql://localhost:5432/dbtest
+    username: postgres
+    password: postgres
+  jpa:
+    hibernate:
+      ddl-auto: validate   # схему создаёт Flyway, Hibernate только проверяет
+    open-in-view: false
+    properties:
+      hibernate:
+        default_schema: shop
+  flyway:
+    schemas: shop
+    create-schemas: true
+
+# Настройки приложения
+app:
+  rate-limit:
+    enabled: true
+    auth-requests-per-minute: 5
+  jwt:
+    secret-key: ${JWT_SECRET_KEY:SUPER_SECRET_KEY_CHANGE_ME_AT_LEAST_32_BYTES}
+    issuer: AppApi
+    audience: AppClient
+    expiry-in-minutes: 180
+
+logging:
+  level:
+    root: INFO
+
+# Email-уведомления о смене статуса заказа выключены, пока не задан SMTP-сервер.
+# Чтобы включить, добавьте в секцию spring: блок mail: и (по желанию) app.mail.sender-email:
+#   spring:
+#     mail:
+#       host: smtp.gmail.com
+#       port: 587
+#       username: noreply@myservice.com
+#       password: ваш_пароль_приложения
+#       properties.mail.smtp.auth: true
+#       properties.mail.smtp.starttls.enable: true
+#   app:
+#     mail:
+#       sender-email: noreply@myservice.com
