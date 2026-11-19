@@ -23,11 +23,24 @@ services:
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/shop
       SPRING_DATASOURCE_USERNAME: postgres
       SPRING_DATASOURCE_PASSWORD: postgres
+      MANAGEMENT_SERVER_ADDRESS: 0.0.0.0
       # секрет для подписи JWT, минимум 32 символа; в реальной среде задаётся из окружения
       JWT_SECRET_KEY: ${JWT_SECRET_KEY:-local-dev-secret-key-change-me-0123456789}
     depends_on:
       postgres:
         condition: service_healthy
 
+  prometheus:
+    image: prom/prometheus:v3.5.0
+    profiles: [monitoring]
+    ports:
+      - "127.0.0.1:9090:9090"
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - shop_prometheus_data:/prometheus
+    depends_on:
+      - app
+
 volumes:
   shop_pgdata:
+  shop_prometheus_data:

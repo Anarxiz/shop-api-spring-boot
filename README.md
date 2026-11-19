@@ -12,6 +12,7 @@ REST API сервиса доставки еды на Java. Учебный про
 - Ограничение частоты запросов на вход и регистрацию
 - Единый формат ошибок `ProblemDetail` (RFC 9457)
 - Документация API через Swagger UI
+- Метрики производительности через Actuator / Micrometer и Prometheus
 
 ## Стек
 
@@ -57,6 +58,19 @@ JWT_SECRET_KEY=$(openssl rand -hex 32) docker compose up --build
 2. В `application.yaml` по умолчанию `jdbc:postgresql://localhost:5432/dbtest`. Переопределить можно переменными
    `SPRING_DATASOURCE_URL`, `SPRING_DATASOURCE_USERNAME`, `SPRING_DATASOURCE_PASSWORD`.
 3. Запустить `ShopApplication`. Схема создаётся миграциями Flyway в схеме `shop`.
+
+## Мониторинг производительности
+
+```bash
+docker compose --profile monitoring up --build -d
+```
+
+Prometheus доступен на http://localhost:9090. Собираются время ответа и число HTTP-запросов,
+ошибки, JVM/GC/CPU, соединения PostgreSQL и вызовы репозиториев.
+При запуске из IDE метрики доступны на http://127.0.0.1:8081/actuator/prometheus.
+Служебный порт в Docker не публикуется на хост.
+
+[Метрики, запросы p95/p99 и порядок замеров](monitoring/README.md).
 
 ## Тесты
 
