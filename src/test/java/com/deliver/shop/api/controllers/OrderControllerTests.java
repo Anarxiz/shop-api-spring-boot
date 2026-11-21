@@ -11,6 +11,8 @@ import com.deliver.shop.support.FakeNotificationChannel;
 import com.deliver.shop.support.FakeNotificationConfiguration;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
@@ -23,11 +25,15 @@ import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilde
 import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+import java.time.Instant;
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.UUID;
 
 import static com.deliver.shop.support.ApiTestClient.bearer;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
+import static org.hamcrest.Matchers.contains;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
@@ -227,6 +233,41 @@ class OrderControllerTests {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[?(@.orderId == '" + firstOrder + "')]").exists())
                 .andExpect(jsonPath("$[?(@.orderId == '" + secondOrder + "')]").doesNotExist());
+    }
+
+    @Test
+    void getMyOrders_limitsDefaultPageAndKeepsStableOrderForEqualTimestamps() throws Exception {
+        var session = api.registerAndLogin();
+        UUID dish = api.createDish(true, "100.00");
+        UUID address = api.createAddress(session.token());
+        var ids = new ArrayList<String>();
+        for (int i = 0; i < 21; i++) {
+            UUID id = createOrder(session.token(), address, dish);
+            var order = orderRepository.findById(id).orElseThrow();
+            order.setCreatedAt(Instant.parse("2026-01-01T00:00:00Z"));
+            orderRepository.save(order);
+            ids.add(id.toString());
+        }
+        ids.sort(Comparator.reverseOrder());
+
+        run(get("/api/orders"), session.token(), null)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[*].orderId", contains(ids.subList(0, 20).toArray(String[]::new))))
+                .andExpect(jsonPath("$[0].items[0].dishId").value(dish.toString()));
+        run(get("/api/orders").param("page", "1"), session.token(), null)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[*].orderId", contains(ids.get(20))));
+        run(get("/api/orders").param("page", "2"), session.token(), null)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$").isEmpty());
+    }
+
+    @ParameterizedTest
+    @CsvSource({"-1, 20", "0, 0", "0, 101", "2147483647, 20"})
+    void getMyOrders_rejectsInvalidPagination(String page, String size) throws Exception {
+        var session = api.registerAndLogin();
+        run(get("/api/orders").param("page", page).param("size", size), session.token(), null)
+                .andExpect(status().isBadRequest());
     }
 
     @Test

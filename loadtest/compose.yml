@@ -1,0 +1,56 @@
+name: shop-loadtest
+
+services:
+  postgres:
+    image: postgres:18
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: shop
+    volumes:
+      - pgdata:/var/lib/postgresql
+      - ./seed.sql:/seed.sql:ro
+    healthcheck:
+      test: [CMD-SHELL, "pg_isready -U postgres -d shop"]
+      interval: 3s
+      timeout: 3s
+      retries: 30
+
+  app:
+    build: ..
+    ports:
+      - "127.0.0.1:18080:8080"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/shop
+      SPRING_DATASOURCE_USERNAME: postgres
+      SPRING_DATASOURCE_PASSWORD: postgres
+      MANAGEMENT_SERVER_ADDRESS: 0.0.0.0
+      APP_RATE_LIMIT_ENABLED: "false"
+      JWT_SECRET_KEY: load-test-only-secret-key-at-least-32-bytes
+      JAVA_TOOL_OPTIONS: -Xms256m -Xmx512m
+    cpus: 2
+    mem_limit: 1g
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  prometheus:
+    image: prom/prometheus:v3.5.0
+    ports:
+      - "127.0.0.1:19090:9090"
+    volumes:
+      - ../monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+
+  k6:
+    image: grafana/k6:2.0.0
+    profiles: [tools]
+    volumes:
+      - ./shop.js:/scripts/shop.js:ro
+    environment:
+      BASE_URL: http://app:8080
+      K6_NO_COLOR: "true"
+
+volumes:
+  pgdata:
+  prometheus_data:

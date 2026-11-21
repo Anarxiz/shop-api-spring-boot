@@ -3,6 +3,7 @@ package com.deliver.shop.application.services;
 import com.deliver.shop.application.contracts.dish.CreateDishRequest;
 import com.deliver.shop.application.contracts.dish.DishResponse;
 import com.deliver.shop.application.contracts.dish.UpdateDishRequest;
+import com.deliver.shop.application.events.CatalogChangedEvent;
 import com.deliver.shop.application.exceptions.BusinessException;
 import com.deliver.shop.application.exceptions.NotFoundException;
 import com.deliver.shop.application.interfaces.repository.CategoryRepository;
@@ -11,6 +12,8 @@ import com.deliver.shop.domain.entities.CategoryEntity;
 import com.deliver.shop.domain.entities.DishEntity;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -25,13 +28,16 @@ public class DishService {
     private static final String DISH_NOT_FOUND = "Блюдо не найдено";
 
     private final DishRepository dishRepository;
+    private final ApplicationEventPublisher events;
     private final CategoryRepository categoryRepository;
 
+    @Cacheable(CatalogCaches.DISHES)
     @Transactional(readOnly = true)
     public List<DishResponse> getAll() {
         return dishRepository.findAllBy().stream().map(DishResponse::from).toList();
     }
 
+    @Cacheable(CatalogCaches.DISHES_BY_CATEGORY)
     @Transactional(readOnly = true)
     public List<DishResponse> getByCategory(UUID categoryId) {
         if (!categoryRepository.existsById(categoryId)) {
@@ -40,6 +46,7 @@ public class DishService {
         return dishRepository.findByCategoryId(categoryId).stream().map(DishResponse::from).toList();
     }
 
+    @Cacheable(CatalogCaches.DISH)
     @Transactional(readOnly = true)
     public DishResponse getById(UUID id) {
         return dishRepository.findWithCategoryById(id)
@@ -62,6 +69,7 @@ public class DishService {
         dishRepository.save(dish);
 
         log.info("Создано блюдо {}", dish.getId());
+        events.publishEvent(new CatalogChangedEvent());
         return dish.getId();
     }
 
@@ -83,6 +91,7 @@ public class DishService {
         dish.setCategory(category);
 
         log.info("Обновлено блюдо {}", id);
+        events.publishEvent(new CatalogChangedEvent());
     }
 
     @Transactional
@@ -92,6 +101,7 @@ public class DishService {
             throw new NotFoundException(DISH_NOT_FOUND);
         }
         dishRepository.deleteById(id);
+        events.publishEvent(new CatalogChangedEvent());
         log.info("Удалено блюдо {}", id);
     }
 

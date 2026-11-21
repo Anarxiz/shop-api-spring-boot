@@ -46,6 +46,16 @@ docker compose up --build
 
 Приложение: http://localhost:8080, Swagger UI: http://localhost:8080/swagger-ui.html
 
+Чтобы включить общий лимит входа и регистрации и кэш каталога через Redis:
+
+```bash
+docker compose -f docker-compose.yml -f compose.redis.yml up --build
+```
+
+Для запуска с Prometheus добавьте `--profile monitoring` перед `up`. Redis доступен
+внутри сети Compose. При запуске из IDE можно задать `SPRING_DATA_REDIS_HOST`,
+`APP_RATE_LIMIT_REDIS_ENABLED=true` и `APP_CATALOG_CACHE_ENABLED=true` для внешнего Redis.
+
 Секрет для подписи JWT задаётся переменной `JWT_SECRET_KEY` (не короче 32 символов):
 
 ```bash
@@ -72,6 +82,8 @@ Prometheus доступен на http://localhost:9090. Собираются в�
 
 [Метрики, запросы p95/p99 и порядок замеров](monitoring/README.md).
 
+[Нагрузочное тестирование k6: отдельный стенд и готовые сценарии](loadtest/README.md).
+
 ## Тесты
 
 Интеграционные тесты поднимают PostgreSQL в Testcontainers, поэтому нужен запущенный Docker (образ `postgres:18`).
@@ -92,8 +104,12 @@ curl -X POST localhost:8080/api/auth/login -H 'Content-Type: application/json' \
   -d '{"email":"ivan@example.com","password":"Passw0rd!"}'
 
 # защищённый запрос
-curl localhost:8080/api/orders -H "Authorization: Bearer <token>"
+curl 'http://localhost:8080/api/orders?page=0&size=20' -H "Authorization: Bearer <token>"
 ```
+
+История заказов возвращает JSON-массив от новых заказов к старым. Нумерация страниц
+начинается с 0, по умолчанию возвращается до 20 заказов, максимум 100 на страницу.
+Страница за концом истории возвращает пустой массив.
 
 Точные поля запросов смотрите в Swagger UI.
 
@@ -114,8 +130,13 @@ UPDATE shop.users SET role = 'ADMINISTRATOR' WHERE email = 'ivan@example.com';
 - **Уведомления**: `@TransactionalEventListener(AFTER_COMMIT)` + `@Async` — письмо не уйдёт, если транзакция откатилась,
   и не задерживает ответ клиенту. Email-канал включается, только если задан `spring.mail.host`.
 - **Rate limiting** — фиксированное окно, 5 запросов в минуту на IP для `/api/auth/login` и `/api/auth/register`
-  (`app.rate-limit.auth-requests-per-minute`). Счётчики хранятся в памяти одного экземпляра; для нескольких
-  экземпляров нужен общий счётчик (например, Redis), а за прокси — корректное определение IP клиента.
+  (`app.rate-limit.auth-requests-per-minute`). С Redis счётчик общий для экземпляров приложения.
+  При ошибке Redis лимит временно применяется на каждом экземпляре отдельно.
+  За доверенным прокси нужно настроить определение IP клиента.
+- **Кэш каталога** — Redis хранит JSON ответов блюд и категорий 45 секунд (`app.catalog.cache.ttl`).
+  Изменение каталога сбрасывает оба набора данных после коммита. При недоступности Redis
+  чтение идёт из PostgreSQL. Конкурентное чтение, начавшееся до изменения, может вернуть и
+  записать в кэш старую версию на срок TTL. При создании заказа цена и доступность берутся из БД.
 - **Ошибки** возвращаются как `application/problem+json`; ошибки валидации — с картой `errors` по полям.
 
 ## CI

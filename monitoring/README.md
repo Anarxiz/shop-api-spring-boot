@@ -85,6 +85,11 @@ clamp_min(sum(rate(http_server_requests_seconds_count{application="shop",uri=~"/
 1/3 с. Это границы измерения, а не обещанный SLA. URI размечаются шаблоном маршрута,
 например `/api/dishes/{id}`; не добавляйте UUID, email, IP или токены в метки.
 
+При включённом Redis `shop_rate_limit_fallback_requests_total` считает запросы, обработанные
+локальным лимитом из-за ошибки Redis. `shop_catalog_cache_errors_total` показывает ошибки
+кэша по операции и имени кэша. `shop_catalog_cache_lookups_total` показывает попадания
+и промахи по имени кэша и метке `result`. Метки не содержат IP или идентификаторы пользователей.
+
 ## Как получить исходные показатели
 
 1. Запустить приложение и Prometheus; подготовить одинаковый набор категорий и блюд.

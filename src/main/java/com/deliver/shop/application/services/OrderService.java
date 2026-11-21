@@ -18,6 +18,7 @@ import com.deliver.shop.domain.entities.OrderItemEntity;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -77,8 +78,19 @@ public class OrderService {
     }
 
     @Transactional(readOnly = true)
-    public List<OrderResponse> getByUser(UUID userId) {
-        return orderRepository.findByUserIdOrderByCreatedAtDesc(userId).stream().map(OrderResponse::from).toList();
+    public List<OrderResponse> getByUser(UUID userId, int page, int size) {
+        PageRequest pagination = PageRequest.of(page, size);
+        if (pagination.getOffset() > Integer.MAX_VALUE) {
+            throw new BusinessException("Слишком большой номер страницы");
+        }
+        // Сначала ограничиваем сами заказы, затем загружаем позиции для выбранной страницы.
+        List<UUID> ids = orderRepository.findHistoryIds(userId, pagination);
+        if (ids.isEmpty()) {
+            return List.of();
+        }
+        return orderRepository.findByUserIdAndIdInOrderByCreatedAtDescIdDesc(userId, ids).stream()
+                .map(OrderResponse::from)
+                .toList();
     }
 
     @Transactional(readOnly = true)

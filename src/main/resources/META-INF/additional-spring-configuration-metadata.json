@@ -11,6 +11,24 @@
       "type": "java.lang.Integer",
       "defaultValue": 5,
       "description": "Максимум запросов в минуту с одного IP на /api/auth/login и /api/auth/register."
+    },
+    {
+      "name": "app.rate-limit.redis.enabled",
+      "type": "java.lang.Boolean",
+      "defaultValue": false,
+      "description": "Использовать общий счётчик запросов в Redis с локальным запасным вариантом."
+    },
+    {
+      "name": "app.catalog.cache.enabled",
+      "type": "java.lang.Boolean",
+      "defaultValue": false,
+      "description": "Кэшировать ответы публичного каталога в Redis."
+    },
+    {
+      "name": "app.catalog.cache.ttl",
+      "type": "java.time.Duration",
+      "defaultValue": "45s",
+      "description": "Срок жизни записей кэша каталога."
     }
   ]
 }

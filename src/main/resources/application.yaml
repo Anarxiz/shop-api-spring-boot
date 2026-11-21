@@ -1,6 +1,12 @@
 spring:
   application:
     name: shop
+  data:
+    redis:
+      connect-timeout: 250ms
+      timeout: 250ms
+      repositories:
+        enabled: false
   datasource:
     url: jdbc:postgresql://localhost:5432/dbtest
     username: postgres
@@ -21,6 +27,12 @@ app:
   rate-limit:
     enabled: true
     auth-requests-per-minute: 5
+    redis:
+      enabled: false
+  catalog:
+    cache:
+      enabled: false
+      ttl: 45s
   jwt:
     secret-key: ${JWT_SECRET_KEY:SUPER_SECRET_KEY_CHANGE_ME_AT_LEAST_32_BYTES}
     issuer: AppApi
@@ -34,6 +46,9 @@ logging:
 # Служебный HTTP-сервер: локально доступен только с этой машины.
 # В Docker адрес переопределяется, порт не публикуется на хост.
 management:
+  health:
+    redis:
+      enabled: false
   server:
     port: 8081
     address: 127.0.0.1

@@ -1,0 +1,18 @@
+services:
+  app:
+    environment:
+      SPRING_DATA_REDIS_HOST: redis
+      APP_RATE_LIMIT_REDIS_ENABLED: "true"
+      APP_CATALOG_CACHE_ENABLED: "true"
+    depends_on:
+      redis:
+        condition: service_healthy
+
+  redis:
+    image: redis:8.8.0-alpine
+    command: ["redis-server", "--maxmemory", "128mb", "--maxmemory-policy", "noeviction"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 3s
+      timeout: 2s
+      retries: 20

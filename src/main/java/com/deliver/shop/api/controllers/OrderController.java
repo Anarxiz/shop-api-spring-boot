@@ -6,6 +6,8 @@ import com.deliver.shop.application.contracts.orders.OrderResponse;
 import com.deliver.shop.application.contracts.orders.UpdateOrderStatusRequest;
 import com.deliver.shop.application.services.OrderService;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -31,8 +33,10 @@ public class OrderController {
     }
 
     @GetMapping
-    public List<OrderResponse> getMyOrders(@AuthenticationPrincipal Jwt jwt) {
-        return orderService.getByUser(CurrentUser.id(jwt));
+    public List<OrderResponse> getMyOrders(@AuthenticationPrincipal Jwt jwt,
+                                           @RequestParam(defaultValue = "0") @Min(0) int page,
+                                           @RequestParam(defaultValue = "20") @Min(1) @Max(100) int size) {
+        return orderService.getByUser(CurrentUser.id(jwt), page, size);
     }
 
     @GetMapping("/{id}")

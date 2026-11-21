@@ -3,6 +3,7 @@ package com.deliver.shop.application.services;
 import com.deliver.shop.application.contracts.category.CategoryResponse;
 import com.deliver.shop.application.contracts.category.CreateCategoryRequest;
 import com.deliver.shop.application.contracts.category.UpdateCategoryRequest;
+import com.deliver.shop.application.events.CatalogChangedEvent;
 import com.deliver.shop.application.exceptions.BusinessException;
 import com.deliver.shop.application.exceptions.NotFoundException;
 import com.deliver.shop.application.interfaces.repository.CategoryRepository;
@@ -10,6 +11,8 @@ import com.deliver.shop.application.interfaces.repository.DishRepository;
 import com.deliver.shop.domain.entities.CategoryEntity;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -25,7 +28,9 @@ public class CategoryService {
 
     private final CategoryRepository categoryRepository;
     private final DishRepository dishRepository;
+    private final ApplicationEventPublisher events;
 
+    @Cacheable(CatalogCaches.CATEGORIES)
     @Transactional(readOnly = true)
     public List<CategoryResponse> getAll() {
         return categoryRepository.findAllBy().stream()
@@ -33,6 +38,7 @@ public class CategoryService {
                 .toList();
     }
 
+    @Cacheable(CatalogCaches.CATEGORY)
     @Transactional(readOnly = true)
     public CategoryResponse getById(UUID id) {
         return categoryRepository.findWithDishesById(id)
@@ -51,6 +57,7 @@ public class CategoryService {
         categoryRepository.save(category);
 
         log.info("Создана категория {}", category.getId());
+        events.publishEvent(new CatalogChangedEvent());
         return category.getId();
     }
 
@@ -68,6 +75,7 @@ public class CategoryService {
 
         category.setName(request.name());
         log.info("Обновлена категория {}", id);
+        events.publishEvent(new CatalogChangedEvent());
     }
 
     @Transactional
@@ -82,6 +90,7 @@ public class CategoryService {
         }
 
         categoryRepository.deleteById(id);
+        events.publishEvent(new CatalogChangedEvent());
         log.info("Удалена категория {}", id);
     }
 }
